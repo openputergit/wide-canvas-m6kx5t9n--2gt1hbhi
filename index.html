@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapverse | Next-Gen Social</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .camera-feed {
+            position: relative;
+            height: calc(100vh - 80px);
+            background: black;
+        }
+
+        .filter-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .story-avatar {
+            border: 3px solid transparent;
+            background: linear-gradient(45deg, #FF5A5F, #FF2B2B);
+            border-radius: 50%;
+            padding: 2px;
+        }
+
+        .camera-controls {
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .filter-preview {
+            transition: transform 0.3s;
+        }
+
+        .filter-preview:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="bg-black text-white overflow-hidden">
+    <div id="app">
+        <!-- Main Camera View -->
+        <div class="camera-feed relative">
+            <video id="camera" class="w-full h-full object-cover" autoplay playsinline></video>
+            
+            <!-- Filter Overlay -->
+            <div class="filter-overlay" v-if="currentFilter">
+                <img :src="currentFilter.preview" class="w-full h-full object-cover">
+            </div>
+
+            <!-- Top Controls -->
+            <div class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center">
+                <div class="flex space-x-4">
+                    <button class="bg-black/50 p-2 rounded-full">
+                        <i class="bi bi-person-circle text-2xl"></i>
+                    </button>
+                    <button class="bg-black/50 p-2 rounded-full">
+                        <i class="bi bi-search text-2xl"></i>
+                    </button>
+                </div>
+                <div class="flex space-x-4">
+                    <button class="bg-black/50 p-2 rounded-full">
+                        <i class="bi bi-music-note-beamed text-2xl"></i>
+                    </button>
+                    <button class="bg-black/50 p-2 rounded-full">
+                        <i class="bi bi-gear text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stories Bar -->
+            <div class="absolute top-20 left-0 right-0 px-4">
+                <div class="flex space-x-4 overflow-x-auto pb-2">
+                    <div v-for="story in stories" class="flex flex-col items-center">
+                        <div class="story-avatar w-16 h-16 mb-1">
+                            <img :src="story.avatar" class="w-full h-full rounded-full">
+                        </div>
+                        <span class="text-xs">{{ story.name }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="camera-controls absolute bottom-0 left-0 right-0 p-4">
+                <!-- Filters Scroll -->
+                <div class="flex space-x-4 overflow-x-auto pb-4">
+                    <div v-for="filter in filters" 
+                         @click="setFilter(filter)"
+                         class="filter-preview flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden">
+                        <img :src="filter.preview" class="w-full h-full object-cover">
+                    </div>
+                </div>
+
+                <!-- Camera Controls -->
+                <div class="flex justify-between items-center">
+                    <button class="p-3">
+                        <i class="bi bi-image text-2xl"></i>
+                    </button>
+                    <button class="capture-btn w-20 h-20 border-4 border-white rounded-full"></button>
+                    <button class="p-3">
+                        <i class="bi bi-arrow-repeat text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="h-20 bg-black flex justify-around items-center border-t border-gray-800">
+            <button class="p-4 flex flex-col items-center">
+                <i class="bi bi-camera-fill text-2xl"></i>
+                <span class="text-xs mt-1">Camera</span>
+            </button>
+            <button class="p-4 flex flex-col items-center opacity-50">
+                <i class="bi bi-chat-dots text-2xl"></i>
+                <span class="text-xs mt-1">Chat</span>
+            </button>
+            <button class="p-4 flex flex-col items-center opacity-50">
+                <i class="bi bi-collection-play text-2xl"></i>
+                <span class="text-xs mt-1">Stories</span>
+            </button>
+            <button class="p-4 flex flex-col items-center opacity-50">
+                <i class="bi bi-globe2 text-2xl"></i>
+                <span class="text-xs mt-1">Discover</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    currentFilter: null,
+                    stories: [
+                        { name: 'Your Story', avatar: 'https://source.unsplash.com/100x100/?portrait&1' },
+                        { name: 'Alex', avatar: 'https://source.unsplash.com/100x100/?portrait&2' },
+                        { name: 'Maria', avatar: 'https://source.unsplash.com/100x100/?portrait&3' },
+                        { name: 'John', avatar: 'https://source.unsplash.com/100x100/?portrait&4' },
+                        { name: 'Sarah', avatar: 'https://source.unsplash.com/100x100/?portrait&5' }
+                    ],
+                    filters: [
+                        { id: 1, name: 'Normal', preview: 'https://source.unsplash.com/100x100/?abstract&1' },
+                        { id: 2, name: 'Retro', preview: 'https://source.unsplash.com/100x100/?abstract&2' },
+                        { id: 3, name: 'Vintage', preview: 'https://source.unsplash.com/100x100/?abstract&3' },
+                        { id: 4, name: 'B&W', preview: 'https://source.unsplash.com/100x100/?abstract&4' },
+                        { id: 5, name: 'Sepia', preview: 'https://source.unsplash.com/100x100/?abstract&5' }
+                    ]
+                }
+            },
+            methods: {
+                async initCamera() {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        const video = document.getElementById('camera');
+                        video.srcObject = stream;
+                    } catch (err) {
+                        console.error('Error accessing camera:', err);
+                    }
+                },
+                setFilter(filter) {
+                    this.currentFilter = filter;
+                }
+            },
+            mounted() {
+                this.initCamera();
+            }
+        }).mount('#app')
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
